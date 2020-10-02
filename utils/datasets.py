@@ -2,33 +2,37 @@ import numpy as np
 from scipy.io import loadmat
 import torch
 from torch.utils.data import Dataset
-
+index = [i for i in range(200)]
+#np.random.seed(0)
+np.random.shuffle(index)
 def get_dataset():
-    data_t = loadmat("data\cub.mat")
-    x1 = data_t['X'][0][0].T
-    x2 = data_t['X'][0][1].T
+    data_t = loadmat("data/handwritten0.mat")
+    x1 = data_t['X'][0][4]
+    x2 = data_t['X'][0][2]
     gt = data_t['gt']
-
-    # 打乱索引,固定np种子是为了用相同的样本训练不同损失函数比较
-    index = [i for i in range(len(x1))] # test_data为测试数据
-    np.random.seed(0)
-    np.random.shuffle(index) # 打乱索引
+    for i in range(21):
+        x1[3*i+1] = x1[3*i+1] * 0.0
+        x1[3*i] = x1[3*i] * 0.0
+    for i in range(68):
+        x2[3*i+1] = x2[3*i+1] * 0.0
+        x2[3*i] = x2[3*i] * 0.0
+    x1 = x1.T
+    x2 = x2.T
     test_x1 = []
     test_x2 = []
     test_label = []
     for i in index:
-        test_x1.append(x1[i])
-        test_x2.append(x2[i])
-        test_label.append(gt[i])
+        for j in range(10):
+            test_x1.append(x1[i+200*j]/12.0)
+            test_x2.append(x2[i+200*j]/600.0) # normalization
+            test_label.append(gt[i+200*j])
     test_x1 = torch.tensor(test_x1)  # 转化为张量
     test_x2 = torch.tensor(test_x2)
     test_label = torch.tensor(test_label)
     test_label = test_label.squeeze()
-    test_label = test_label-1
     test_label = test_label.to(torch.int64)
     test_x1 = test_x1.to(torch.float32)
     test_x2 = test_x2.to(torch.float32)
-
     #定义Mydataset继承自Dataset,并重写__getitem__和__len__
 
     class Mydataset(Dataset):
@@ -47,8 +51,7 @@ def get_dataset():
         def __len__(self):
             return self.num
 
-    train_dataset = Mydataset(test_x1[0:400], test_x2[0:400], test_label[0:400], 400)
-    test_dataset = Mydataset(test_x1[500:600], test_x2[500:600], test_label[500:600], 100)
-    val_dataset = Mydataset(test_x1[400:500], test_x2[400:500], test_label[400:500], 100)
+    train_dataset = Mydataset(test_x1[0:1200], test_x2[0:1200], test_label[0:1200], 1200)
+    test_dataset = Mydataset(test_x1[1600:2000], test_x2[1600:2000], test_label[1600:2000], 400)
+    val_dataset = Mydataset(test_x1[1200:1600], test_x2[1200:1600], test_label[1200:1600], 400)
     return train_dataset, test_dataset, val_dataset
-
